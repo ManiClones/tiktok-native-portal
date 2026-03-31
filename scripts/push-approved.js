@@ -16,9 +16,10 @@
  * 5. Commits and pushes to GitHub
  */
 
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +34,7 @@ const TIKTOK_GENERATOR = process.env.TIKTOK_GENERATOR_ROOT
   || (fs.existsSync('/home/node/.openclaw/workspace/coding/TikTokGenerator')
     ? '/home/node/.openclaw/workspace/coding/TikTokGenerator'
     : path.resolve(ROOT_DIR, '..', 'TikTokGenerator'));
+const SQLITE_DB = path.join(TIKTOK_GENERATOR, 'data', 'slideshows.db');
 
 // Ensure directories exist
 [PUBLIC_SLIDESHOWS, PUBLIC_RAW].forEach(dir => {
@@ -67,8 +69,8 @@ function getSlideshowFolders() {
       }
     });
   });
-  
-  return folders;
+
+  return folders.sort((a, b) => b.id.localeCompare(a.id));
 }
 
 /**
@@ -89,6 +91,133 @@ function isStructuredFormat(meta) {
     return false;
   }
   return typeof meta.slides[0] === 'object';
+}
+
+function hashFile(filePath) {
+  const buf = fs.readFileSync(filePath);
+  return crypto.createHash('md5').update(buf).digest('hex');
+}
+
+function getSlideFiles(folderPath) {
+  return fs.readdirSync(folderPath)
+    .filter(f => f.match(/^slide_\d+\.jpg$/))
+    .sort((a, b) => {
+      const aNum = parseInt(a.match(/slide_(\d+)\.jpg/)[1], 10);
+      const bNum = parseInt(b.match(/slide_(\d+)\.jpg/)[1], 10);
+      return aNum - bNum;
+    });
+}
+
+function getRawFiles(folderPath) {
+  const rawFolder = path.join(folderPath, 'raw');
+  if (!fs.existsSync(rawFolder)) return [];
+  return fs.readdirSync(rawFolder)
+    .filter(f => f.match(/^raw_\d+\.jpg$/))
+    .sort((a, b) => {
+      const aNum = parseInt(a.match(/raw_(\d+)\.jpg/)[1], 10);
+      const bNum = parseInt(b.match(/raw_(\d+)\.jpg/)[1], 10);
+      return aNum - bNum;
+    })
+    .map(f => path.join(rawFolder, f));
+}
+
+function rawFilesLookBroken(version, meta, folderPath, slideCount, options = {}) {
+  const rawFiles = getRawFiles(folderPath);
+  if (rawFiles.length !== slideCount) return true;
+
+  // V3 intentionally reuses the same background for non-CTA slides
+  if (version === 'V3') return false;
+
+  const hashes = rawFiles.map(hashFile);
+  const uniqueHashes = new Set(hashes);
+
+  // Old V1 Postiz-style meta often lost per-slide source info and all raws collapsed to one image
+  if ((!isStructuredFormat(meta) || options.recoveredFromDb) && uniqueHashes.size === 1 && slideCount > 1) {
+    return true;
+  }
+
+  return false;
+}
+
+function parseRecoveredHookText(text, index) {
+  const normalized = String(text || '').trim();
+  if (!normalized) return { headline: '', subline: '' };
+
+  const lines = normalized.split('\n');
+  if (index === 0 && lines.length === 1) {
+    return { headline: normalized, subline: '' };
+  }
+
+  return {
+    headline: lines[0] || '',
+    subline: lines.slice(1).join('\n').trim()
+  };
+}
+
+function recoverSlidesFromDb(slideshowId) {
+  if (!fs.existsSync(SQLITE_DB)) return null;
+
+  const py = [
+    'import json, sqlite3, sys',
+    'db_path, slideshow_id = sys.argv[1], sys.argv[2]',
+    'conn = sqlite3.connect(db_path)',
+    'cur = conn.cursor()',
+    'rows = cur.execute("SELECT text, order_index FROM hooks WHERE slideshow_id=? ORDER BY order_index ASC", (slideshow_id,)).fetchall()',
+    'print(json.dumps([{"text": r[0], "order_index": r[1]} for r in rows], ensure_ascii=False))'
+  ].join('\n');
+
+  try {
+    const out = execFileSync('python3', ['-c', py, SQLITE_DB, slideshowId], {
+      cwd: ROOT_DIR,
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).toString().trim();
+
+    const parsed = JSON.parse(out || '[]');
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getMetaCandidates(folderPath) {
+  return [
+    path.join(folderPath, 'portal_meta.json'),
+    path.join(folderPath, 'render_meta.json'),
+    path.join(folderPath, 'meta.render.json'),
+    path.join(folderPath, 'meta.json')
+  ].filter(fs.existsSync);
+}
+
+function loadBestMeta(folder) {
+  const candidates = getMetaCandidates(folder.path);
+
+  for (const candidate of candidates) {
+    try {
+      const meta = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+      if (isStructuredFormat(meta)) {
+        return { meta, source: candidate, recoveredFromDb: false };
+      }
+    } catch {}
+  }
+
+  const metaPath = path.join(folder.path, 'meta.json');
+  const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+  const recovered = recoverSlidesFromDb(folder.id);
+
+  if (recovered && recovered.length > 0) {
+    meta.slides = recovered.map((row, index) => {
+      const parsed = parseRecoveredHookText(row.text, index);
+      const isCta = /shortct|app/i.test(parsed.headline) && index > 0;
+      return isCta
+        ? { type: 'cta', label: parsed.headline, text: parsed.subline }
+        : index === 0
+          ? { type: 'hook', headline: parsed.headline }
+          : { type: 'tip', label: parsed.headline, text: parsed.subline };
+    });
+    return { meta, source: `${metaPath} + db`, recoveredFromDb: true };
+  }
+
+  return { meta, source: metaPath, recoveredFromDb: false };
 }
 
 /**
@@ -192,17 +321,17 @@ function addSlideshow(folder) {
   
   // Load meta
   let meta;
+  let metaInfo;
   try {
-    meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    metaInfo = loadBestMeta(folder);
+    meta = metaInfo.meta;
   } catch (err) {
     console.log(`   ❌ Invalid meta.json: ${id}`);
     return null;
   }
   
   // Get slide count
-  const slideFiles = fs.readdirSync(folderPath)
-    .filter(f => f.match(/^slide_\d+\.jpg$/))
-    .sort();
+  const slideFiles = getSlideFiles(folderPath);
   
   if (slideFiles.length === 0) {
     console.log(`   ❌ No slides found: ${id}`);
@@ -211,10 +340,20 @@ function addSlideshow(folder) {
   
   const slideCount = slideFiles.length;
   console.log(`   📦 ${id} (${slideCount} slides)`);
+  if (metaInfo?.source) {
+    console.log(`      🧠 Meta source: ${path.basename(metaInfo.source)}`);
+  }
   
   // Check for raw backgrounds
   const rawFolder = path.join(folderPath, 'raw');
   const hasRawBackgrounds = fs.existsSync(rawFolder);
+  const shouldFallbackToComposite = rawFilesLookBroken(folder.version, meta, folderPath, slideCount, {
+    recoveredFromDb: metaInfo?.recoveredFromDb
+  });
+  const useRealRaw = hasRawBackgrounds && !shouldFallbackToComposite;
+  if (shouldFallbackToComposite) {
+    console.log(`      ⚠️ Raw images look broken for portal use - falling back to composite images`);
+  }
   
   // Extract hook text
   const hookText = extractHookText(meta);
@@ -232,7 +371,7 @@ function addSlideshow(folder) {
     
     // Copy raw background if available
     let hasRaw = false;
-    if (hasRawBackgrounds) {
+    if (useRealRaw) {
       const rawSrc = path.join(rawFolder, `raw_${slideNum}.jpg`);
       const rawDest = path.join(PUBLIC_RAW, `${id}-slide-${i}.jpg`);
       
@@ -271,7 +410,7 @@ function addSlideshow(folder) {
     downloaded: false,
     slides: slideRecords,
     full_preview: `/slideshows/${id}-slide-0.jpg`,
-    has_raw_backgrounds: hasRawBackgrounds
+    has_raw_backgrounds: slideRecords.some(slide => slide.hasRaw)
   };
   
   // Load existing data
@@ -323,6 +462,24 @@ export function pushApprovedSlideshows(count = null) {
   }
   
   return { added, skipped };
+}
+
+export function pushSlideshowById(slideshowId) {
+  console.log(`\n🚀 Pushing slideshow by id: ${slideshowId}\n`);
+
+  const folder = getSlideshowFolders().find(f => f.id === slideshowId);
+  if (!folder) {
+    console.log(`❌ Not found: ${slideshowId}`);
+    return { added: 0, skipped: 0, found: false };
+  }
+
+  const result = addSlideshow(folder);
+  if (result) {
+    pushToGitHub(`Add slideshow ${slideshowId} to portal`);
+    return { added: 1, skipped: 0, found: true };
+  }
+
+  return { added: 0, skipped: 1, found: true };
 }
 
 /**
@@ -427,6 +584,9 @@ if (process.argv[1] === __filename) {
     case 'approved':
       pushApprovedSlideshows(args[1] ? parseInt(args[1]) : null);
       break;
+    case 'one':
+      pushSlideshowById(args[1]);
+      break;
     case 'status':
       showStatus();
       break;
@@ -434,6 +594,7 @@ if (process.argv[1] === __filename) {
       console.log(`
 Usage:
   node scripts/push-approved.js approved [N]  - Push N slideshows (default: all)
+  node scripts/push-approved.js one <id>      - Push a specific slideshow id
   node scripts/push-approved.js push          - Push to GitHub only
   node scripts/push-approved.js clear [N]     - Keep N newest (default: 20)
   node scripts/push-approved.js status         - Show status
@@ -443,6 +604,7 @@ Usage:
 
 export default {
   pushApprovedSlideshows,
+  pushSlideshowById,
   pushToGitHub,
   clearOldSlideshows,
   showStatus
