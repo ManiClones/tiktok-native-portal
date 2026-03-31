@@ -1,86 +1,112 @@
 # TikTok Native Portal - PHNTM Integration
 
-## Wie PHNTM Slideshows hinzufügt
+## Quick Commands
 
-Wenn Mani sagt: "Schick die approved Slideshows zum Portal"
+| Command | Was passiert |
+|---------|--------------|
+| "Push approved slideshows" | PHNTM pusht alle approved Slideshows aus dem TikTok Generator zum Portal |
+| "Push approved 5" | PHNTM pusht die letzten 5 approved Slideshows |
+| "Push zum GitHub" | Git commit + push (manuell) |
+| "Zeig Portal Status" | Zeigt Anzahl Slideshows + letzte Updates |
+| "Räum alte auf" | Löscht Slideshows älter als X (keep 20 newest) |
 
-### Schritt 1: Slideshow Daten sammeln
+---
 
-```javascript
-const newSlideshow = {
-  id: `slideshow-${Date.now()}`,
-  hook: "Der Hook Text",
-  slides: [
-    {
-      headline: "Slide 1 Headline",
-      subline: "Slide 1 Subline", 
-      raw_image_path: "/path/to/raw-slide-0.png",
-      composite_image_path: "/path/to/composite-slide-0.png"
-    },
-    // ... more slides
-  ],
-  fullPreviewPath: "/path/to/full-preview.png"
-};
-```
+## Automatischer Workflow
 
-### Schritt 2: Slideshow hinzufügen
+Wenn Mani sagt: **"Push approved slideshows"** (oder **"Push approved 1"** etc.)
 
-```bash
-cd /home/node/.openclaw/workspace/coding/tiktok-native-portal
+### Was PHNTM macht:
 
-node -e "
-import { addSlideshow } from './scripts/push-approved.js';
-addSlideshow({
-  id: 'slideshow-001',
-  hook: 'Test Hook',
-  slides: [
-    {
-      headline: 'Headline 1',
-      subline: 'Subline 1',
-      raw_image_path: '/path/to/raw.png',
-      composite_image_path: '/path/to/comp.png'
-    }
-  ],
-  fullPreviewPath: '/path/to/full.png'
-});
-"
-```
+1. **Sucht approved Slideshows** im TikTok Generator Output
+2. **Extrahiert Texte** aus meta.json
+3. **Kopiert Bilder** ins Portal
+4. **Aktualisiert slideshows.json**
+5. **Pushed zu GitHub**
+6. **Vercel deployed automatisch**
 
-### Schritt 3: Push to GitHub
+---
+
+## Beispiel: "Push approved 1"
 
 ```bash
 cd /home/node/.openclaw/workspace/coding/tiktok-native-portal
-git add .
-git commit -m "Add approved slideshows"
-git push
+node scripts/push-approved.js approved 1
 ```
 
-### Schritt 4: Mani informieren
+Output:
+```
+📋 Fetching approved slideshows from TikTok Generator...
+   Found 45 approved slideshows
 
-> ✅ Slideshows deployed! Öffne https://dein-portal.vercel.app auf dem TikTok Handy
+📦 Processing 1 slideshows...
+
+[1/1] Processing v3_20260326_024506_05...
+   ✅ Extracted hook: "When the professor says the exam covers everything..."
+   ✅ Extracted 4 slides
+   ✅ Copied raw image: slide-0.png
+   ✅ Copied composite image: slide-0.png
+   ✅ Copied raw image: slide-1.png
+   ✅ Copied composite image: slide-1.png
+   ✅ Copied raw image: slide-2.png
+   ✅ Copied composite image: slide-2.png
+   ✅ Copied raw image: slide-3.png
+   ✅ Copied composite image: slide-3.png
+   💾 Updated slideshows.json
+
+📊 Results:
+   ✅ Pushed: 1
+   ❌ Failed: 0
+
+🚀 Pushing to GitHub...
+   ✅ Pushed to GitHub
+```
+
+---
+
+## Bekannte Limitierung
+
+⚠️ **Raw Images enthalten Text**
+
+Die TikTok Generator Slides haben bereits Text "burned in" (keine separaten Raw Backgrounds verfügbar).
+
+**Workaround:**
+- Raw Images im Portal = Composite Images (mit Text)
+- UI zeigt Warnung an: "Raw images contain text - crop or use carefully"
+- Mani kann:
+  1. Raw Images downloaden
+  2. In TikTok hochladen
+  3. Texte aus Portal kopieren
+  4. TikTok Text-Generator nutzen um Text zu überlagern
+
+**Lösung für später:**
+- TikTok Generator erweitern, um separate raw backgrounds zu speichern
+- Oder: Raw backgrounds aus Pinterest separat laden
 
 ---
 
 ## Integration mit TikTok Generator
 
-Wenn TikTok Generator neue Slideshows erstellt:
+Der TikTok Generator speichert Slideshows in:
+```
+coding/TikTokGenerator/
+├── V1/output/{id}/
+├── V2/output/{id}/
+├── V3/output/{id}/
+    ├── meta.json          <- Text content
+    ├── slide_1.jpg         <- Composite (with text)
+    ├── slide_2.jpg
+    ├── slide_3.jpg
+    └── slide_4.jpg
+```
 
-1. Generator speichert in `coding/TikTok/output/`
-2. PHNTM liest die approved Slideshows
-3. Kopiert images + texts ins Portal
-4. Push zu GitHub
-5. Vercel deployed automatisch
-
----
-
-## Commands für Mani
-
-| Command | Was passiert |
-|---------|--------------|
-| "Schick approved zum Portal" | PHNTM pusht alle approved Slideshows |
-| "Push zum GitHub" | Git commit + push |
-| "Zeig Portal Status" | Zeigt Anzahl Slideshows + letzte Updates |
-| "Räum alte auf" | Löscht Slideshows älter als X |
+Das `push-approved.js` Script:
+- Scannt alle Version directories (V1, V2, V3)
+- Liest `meta.json` für Text content
+- Extrahiert Hook + Slides
+- Mappt TikTok Generator slide types zu Portal format
+- Kopiert images + updated JSON
+- Pushed zu GitHub
 
 ---
 

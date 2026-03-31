@@ -54,30 +54,30 @@
 ---
 
 ## Dateistruktur
-
 ```
 tiktok-native-portal/
 ├── public/
 │   ├── index.html          # Main UI
 │   ├── styles.css          # Mobile-first styles
 │   ├── app.js              # Frontend logic
+│   ├── api/
+│   │   └── slideshows.json # Slideshow data (git-tracked)
 │   ├── slideshows/         # Composite images (with text)
 │   │   └── {id}-slide-0.png
-│   │   └── {id}-slide-1.png
 │   │   └── {id}-full.png
-│   └── raw-images/         # Raw backgrounds (for TikTok upload)
+│   └── raw-images/         # ⚠️ Same as slideshows (composites have text burned in)
 │       └── {id}-slide-0.png
-│       └── {id}-slide-1.png
-├── data/
-│   └── slideshows.json     # Slideshow data (git-tracked)
 ├── scripts/
-│   └── push-approved.js    # Push script
+│   └── push-approved.js    # Push script + helpers
 ├── docs/
-│   └── WORKFLOW.md
-│   └── TUTORIAL.md
+│   ├── WORKFLOW.md
+│   ├── TUTORIAL.md
+│   └── PHNTM-INTEGRATION.md
 ├── package.json
 └── vercel.json
 ```
+
+> **Note:** Raw images currently contain the composite images (with text burned in). TikTok Generator doesn't store separate raw backgrounds. This is a known limitation - the UI shows a warning to users.
 
 ---
 

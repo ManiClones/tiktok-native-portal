@@ -16,6 +16,7 @@ Semi-manual TikTok slideshow upload portal for better algorithm reach.
 - 📋 **Copy Buttons** - Easy text copying per slide
 - 🏷️ **Download Tracking** - localStorage remembers what you've downloaded
 - ⚡ **Vercel Deployment** - Instant deploys on git push
+- 🚀 **Bulk Push** - Push multiple approved slideshows at once
 
 ## Quick Start
 
@@ -47,10 +48,20 @@ scripts/
 └── push-approved.js    # PHNTM push script
 ```
 
+## Limitations
+
+⚠️ **Raw Images contain text** - TikTok Generator doesn't store separate raw backgrounds. All images have text burned in.
+
+**Workaround:**
+- Use "Download All" button to get all images
+- In TikTok: Upload first slide,- Use TikTok's native text tool to overlay new text
+- Copy text from Portal's text section
+
 ## Docs
 
 - [WORKFLOW.md](docs/WORKFLOW.md) - Full workflow explanation
 - [TUTORIAL.md](docs/TUTORIAL.md) - Setup & usage guide
+- [PHNTM-INTEGRATION.md](docs/PHNTM-INTEGRATION.md) - Commands for PHNTM
 
 ---
 

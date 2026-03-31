@@ -2,7 +2,7 @@
 /**
  * Push Approved Slideshows to GitHub
  * 
- * Usage: npm run push
+ * Usage: node scripts/push-approved.js
  * 
  * This script:
  * 1. Takes new approved slideshows from PHNTM
@@ -23,45 +23,219 @@ const ROOT_DIR = path.join(__dirname, '..');
 const DATA_FILE = path.join(ROOT_DIR, 'public', 'api', 'slideshows.json');
 const PUBLIC_SLIDESHOWS = path.join(ROOT_DIR, 'public', 'slideshows');
 const PUBLIC_RAW = path.join(ROOT_DIR, 'public', 'raw-images');
+const TIKTOK_GENERATOR_OUTPUT = '/home/node/.openclaw/workspace/coding/TikTokGenerator';
 
 // Ensure directories exist
 [PUBLIC_SLIDESHOWS, PUBLIC_RAW].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+    console.log(`📁 Created directory: ${dir}`);
   }
 });
 
 /**
+ * Get all approved slideshows from TikTok Generator
+ * @returns {Array} Array of approved slideshow objects
+ */
+export function getApprovedSlideshows() {
+  const slideshows = [];
+  
+  // Walk through all version directories
+  ['V1', 'V2', 'V3'].forEach(version => {
+    const outputDir = path.join(TIKTOK_GENERATOR_OUTPUT, version, 'output');
+    
+    if (!fs.existsSync(outputDir)) return;
+    
+    const dirs = fs.readdirSync(outputDir, { withFileTypes: true });
+    
+    dirs.forEach(dir => {
+      if (!dir.isDirectory()) return;
+      
+      const slideshowPath = path.join(outputDir, dir.name);
+      const metaPath = path.join(slideshowPath, 'meta.json');
+      
+      if (!fs.existsSync(metaPath)) return;
+      
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        
+        // Check if approved
+        if (meta.approved === true || (meta.approval && meta.approval.approvedAt)) {
+          slideshows.push({
+            id: dir.name,
+            version,
+            path: slideshowPath,
+            meta,
+            approvedAt: meta.approval?.approvedAt || meta.approvedAt
+          });
+        }
+      } catch (err) {
+        console.warn(`⚠️ Could not parse ${metaPath}: ${err.message}`);
+      }
+    });
+  });
+  
+  // Sort by approval date (newest first)
+  slideshows.sort((a, b) => 
+    new Date(b.approvedAt) - new Date(a.approvedAt)
+  );
+  
+  return slideshows;
+}
+
+/**
+ * Check if slideshow already exists in portal
+ * @param {string} slideshowId 
+ * @returns {boolean}
+ */
+export function isSlideshowInPortal(slideshowId) {
+  if (!fs.existsSync(DATA_FILE)) return false;
+  
+  const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  return data.slideshows.some(s => s.id === slideshowId);
+}
+
+/**
+ * Extract slides data from TikTok Generator meta
+ * @param {Object} meta - The meta.json content
+ * @param {string} slideshowPath - Path to slideshow directory
+ * @returns {Array} Array of slide objects
+ */
+function extractSlides(meta, slideshowPath) {
+  const slides = [];
+  
+  if (!meta.slides || !Array.isArray(meta.slides)) {
+    return slides;
+  }
+  
+  meta.slides.forEach((slide, i) => {
+    const slideNum = i + 1;
+    const imagePath = path.join(slideshowPath, `slide_${slideNum}.jpg`);
+    
+    if (!fs.existsSync(imagePath)) {
+      console.warn(`⚠️ Slide image not found: ${imagePath}`);
+      return;
+    }
+    
+    // Extract text based on slide type
+    let headline = '';
+    let subline = '';
+    
+    switch (slide.type) {
+      case 'hook':
+        headline = slide.headline || '';
+        subline = 'Hook';
+        break;
+        
+      case 'transition':
+        headline = slide.text || '';
+        subline = 'Transition';
+        break;
+        
+      case 'methods':
+        headline = slide.methods?.join(' • ') || '';
+        subline = 'Methods';
+        break;
+        
+      case 'cta':
+        headline = slide.header || '';
+        subline = `${slide.app_name || ''} - ${slide.description || ''}`;
+        break;
+        
+      case 'tip':
+        headline = `${slide.label || ''}: ${slide.text || ''}`;
+        subline = 'Tip';
+        break;
+        
+      case 'steps':
+        slide.steps?.forEach((step, j) => {
+          slides.push({
+            index: slides.length,
+            headline: step.header || '',
+            subline: step.text || '',
+            raw_image_path: imagePath,
+            composite_image_path: imagePath,
+            isRaw: false // These composites have text burned in
+          });
+        });
+        return; // Skip the default push below
+        
+      default:
+        headline = slide.headline || slide.text || '';
+        subline = slide.type || '';
+    }
+    
+    slides.push({
+      index: slides.length,
+      headline,
+      subline,
+      raw_image_path: imagePath,
+      composite_image_path: imagePath,
+      isRaw: false // Note: These are composites with text
+    });
+  });
+  
+  return slides;
+}
+
+/**
  * Add a new slideshow to the portal
- * Call this from PHNTM when Mani approves
+ * @param {Object} slideshowData - The slideshow data
+ * @returns {Object} The created slideshow record
  */
 export function addSlideshow(slideshowData) {
   const {
     id,
     hook,
-    slides, // [{ headline, subline, raw_image_path, composite_image_path }]
-    fullPreviewPath
+    slides,
+    fullPreviewPath,
+    isRawOnly
   } = slideshowData;
+
+  if (!id || !hook || !slides || slides.length === 0) {
+    throw new Error('Invalid slideshow data: missing id, hook, or slides');
+  }
+
+  // Check if already exists
+  if (isSlideshowInPortal(id)) {
+    console.log(`⏭ Skipping ${id} - already in portal`);
+    return null;
+  }
 
   // Load existing data
   let data = { slideshows: [] };
   if (fs.existsSync(DATA_FILE)) {
-    data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    try {
+      data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    } catch (err) {
+      console.warn('⚠️ Could not parse existing slideshows.json, creating new');
+      data = { slideshows: [] };
+    }
   }
+
+  console.log(`\n📦 Processing slideshow: ${id}`);
+  console.log(`   Hook: ${hook}`);
+  console.log(`   Slides: ${slides.length}`);
 
   // Copy images to public folders
   const slideRecords = slides.map((slide, i) => {
     const rawDest = path.join(PUBLIC_RAW, `${id}-slide-${i}.png`);
     const compDest = path.join(PUBLIC_SLIDESHOWS, `${id}-slide-${i}.png`);
 
-    // Copy raw background
+    // Copy raw image
     if (fs.existsSync(slide.raw_image_path)) {
       fs.copyFileSync(slide.raw_image_path, rawDest);
+      console.log(`   ✅ Copied raw image: slide-${i}.png`);
+    } else {
+      console.warn(`   ⚠️ Raw image not found: ${slide.raw_image_path}`);
     }
 
-    // Copy composite (with text)
+    // Copy composite image
     if (fs.existsSync(slide.composite_image_path)) {
       fs.copyFileSync(slide.composite_image_path, compDest);
+      console.log(`   ✅ Copied composite image: slide-${i}.png`);
+    } else {
+      console.warn(`   ⚠️ Composite image not found: ${slide.composite_image_path}`);
     }
 
     return {
@@ -69,14 +243,22 @@ export function addSlideshow(slideshowData) {
       headline: slide.headline,
       subline: slide.subline,
       raw_image: `/raw-images/${id}-slide-${i}.png`,
-      composite_image: `/slideshows/${id}-slide-${i}.png`
+      composite_image: `/slideshows/${id}-slide-${i}.png`,
+      isRaw: slide.isRaw || false
     };
   });
 
-  // Copy full preview
+  // Copy full preview if exists
   const fullPreviewDest = path.join(PUBLIC_SLIDESHOWS, `${id}-full.png`);
   if (fullPreviewPath && fs.existsSync(fullPreviewPath)) {
     fs.copyFileSync(fullPreviewPath, fullPreviewDest);
+    console.log(`   ✅ Copied full preview`);
+  } else {
+    // Create full preview from first slide
+    if (slides.length > 0 && fs.existsSync(slides[0].composite_image_path)) {
+      fs.copyFileSync(slides[0].composite_image_path, fullPreviewDest);
+      console.log(`   ✅ Created full preview from first slide`);
+    }
   }
 
   // Create slideshow record
@@ -90,24 +272,46 @@ export function addSlideshow(slideshowData) {
   };
 
   // Add to data
-  data.slideshows.push(newSlideshow);
+  data.slideshows.unshift(newSlideshow); // Add to beginning
 
   // Save
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  console.log(`   💾 Updated slideshows.json`);
 
-  console.log(`✅ Added slideshow: ${id}`);
+  console.log(`\n✅ Added slideshow: ${id}\n`);
   return newSlideshow;
 }
 
 /**
  * Push to GitHub
+ * @param {string} commitMessage - The commit message
+ * @returns {boolean} Success status
  */
 export function pushToGitHub(commitMessage = 'Update slideshows') {
+  console.log('\n🚀 Pushing to GitHub...\n');
+  
   try {
+    // Add all changes
     execSync('git add .', { cwd: ROOT_DIR, stdio: 'inherit' });
+    
+    // Check if there are changes to commit
+    try {
+      execSync('git diff --cached --quiet', { cwd: ROOT_DIR, stdio: 'pipe' });
+      console.log('   ℹ️ No changes to commit');
+      return true;
+    } catch {
+      // There are changes, proceed with commit
+    }
+    
+    // Commit
     execSync(`git commit -m "${commitMessage}"`, { cwd: ROOT_DIR, stdio: 'inherit' });
+    console.log('   ✅ Committed changes');
+    
+    // Push
     execSync('git push', { cwd: ROOT_DIR, stdio: 'inherit' });
-    console.log('✅ Pushed to GitHub');
+    console.log('   ✅ Pushed to GitHub');
+    
+    console.log('\n✅ Successfully pushed to GitHub!\n');
     return true;
   } catch (error) {
     console.error('❌ Git push failed:', error.message);
@@ -116,42 +320,170 @@ export function pushToGitHub(commitMessage = 'Update slideshows') {
 }
 
 /**
+ * Push multiple approved slideshows from TikTok Generator
+ * @param {number} count - Number of slideshows to push (default: all approved)
+ * @returns {Object} Result with count and slideshow IDs
+ */
+export function pushApprovedSlideshows(count = null) {
+  console.log('\n📋 Fetching approved slideshows from TikTok Generator...\n');
+  
+  const approved = getApprovedSlideshows();
+  
+  if (approved.length === 0) {
+    console.log('   ℹ️ No approved slideshows found');
+    return { count: 0, pushed: [] };
+  }
+  
+  // Limit count if specified
+  const toProcess = count ? approved.slice(0, count) : approved;
+  
+  console.log(`   Found ${approved.length} approved slideshows`);
+  console.log(`   Processing ${toProcess.length} slideshows\n`);
+  
+  const pushed = [];
+  let failed = 0;
+  
+  toProcess.forEach((slideshow, i) => {
+    console.log(`\n[${i + 1}/${toProcess.length}] Processing ${slideshow.id}...`);
+    
+    try {
+      // Extract hook text
+      const hookText = extractHookText(slideshow.meta);
+      
+      // Extract slides
+      const slides = extractSlides(slideshow.meta, slideshow.path);
+      
+      if (slides.length === 0) {
+        console.log('   ⚠️ No slides found, skipping');
+        failed++;
+        return;
+      }
+      
+      addSlideshow({
+        id: slideshow.id,
+        hook: hookText,
+        slides,
+        fullPreviewPath: path.join(slideshow.path, 'slide_1.jpg'),
+        isRawOnly: false
+      });
+      
+      pushed.push(slideshow.id);
+    } catch (err) {
+      console.error(`   ❌ Failed: ${err.message}`);
+      failed++;
+    }
+  });
+  
+  console.log(`\n📊 Results:`);
+  console.log(`   ✅ Pushed: ${pushed.length}`);
+  console.log(`   ❌ Failed: ${failed}`);
+  
+  // Push to GitHub if we pushed anything
+  if (pushed.length > 0) {
+    pushToGitHub(`Add ${pushed.length} approved slideshows`);
+  }
+  
+  return { count: pushed.length, pushed, pushed, pushed, failed };
+}
+
+/**
+ * Extract hook text from meta
+ * @param {Object} meta - The meta.json content
+ * @returns {string} The hook text
+ */
+function extractHookText(meta) {
+  // Try to find hook text from slides
+  if (meta.slides && Array.isArray(meta.slides)) {
+    const hookSlide = meta.slides.find(s => s.type === 'hook');
+    if (hookSlide) {
+      return hookSlide.headline || hookSlide.text || 'Untitled';
+    }
+  }
+  
+  return 'Untitled';
+}
+
+/**
  * Clear old slideshows (optional cleanup)
+ * @param {number} keepCount - Number of slideshows to keep (default: 20)
  */
 export function clearOldSlideshows(keepCount = 20) {
-  let data = { slideshows: [] };
-  if (fs.existsSync(DATA_FILE)) {
-    data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  if (!fs.existsSync(DATA_FILE)) {
+    console.log('ℹ️ No slideshows to clean up');
+    return;
   }
-
-  if (data.slideshows.length <= keepCount) return;
-
+  
+  let data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  
+  if (data.slideshows.length <= keepCount) {
+    console.log(`ℹ️ Only ${data.slideshows.length} slideshows, nothing to clean`);
+    return;
+  }
+  
+  console.log(`\n🧹 Cleaning up old slideshows (keeping ${keepCount} newest)...\n`);
+  
   // Sort by date, keep newest
-  const sorted = data.slideshows.sort((a, b) => 
+  const sorted = [...data.slideshows].sort((a, b) => 
     new Date(b.created_at) - new Date(a.created_at)
   );
-
+  
   const toRemove = sorted.slice(keepCount);
   
   // Remove files
   toRemove.forEach(slideshow => {
+    console.log(`   Removing ${slideshow.id}...`);
+    
     slideshow.slides.forEach(slide => {
-      const rawPath = path.join(ROOT_DIR, 'public', slide.raw_image);
-      const compPath = path.join(ROOT_DIR, 'public', slide.composite_image);
-      
-      if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath);
-      if (fs.existsSync(compPath)) fs.unlinkSync(compPath);
-    });
-
-    const fullPath = path.join(ROOT_DIR, 'public', slideshow.full_preview);
-    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    const rawPath = path.join(ROOT_DIR, 'public', slide.raw_image);
+    const compPath = path.join(ROOT_DIR, 'public', slide.composite_image);
+    
+    if (fs.existsSync(rawPath)) {
+      fs.unlinkSync(rawPath);
+    }
+    if (fs.existsSync(compPath)) {
+      fs.unlinkSync(compPath);
+    }
   });
-
+  
+  const fullPath = path.join(ROOT_DIR, 'public', slideshow.full_preview);
+  if (fs.existsSync(fullPath)) {
+    fs.unlinkSync(fullPath);
+  }
+  });
+  
   // Update data
   data.slideshows = sorted.slice(0, keepCount);
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  
+  console.log(`\n✅ Cleaned up ${toRemove.length} old slideshows\n`);
+}
 
-  console.log(`🧹 Cleaned up ${toRemove.length} old slideshows`);
+/**
+ * Show status of portal
+ */
+export function showStatus() {
+  console.log('\n📊 TikTok Native Portal Status\n');
+  console.log('='.repeat(40));
+  
+  if (!fs.existsSync(DATA_FILE)) {
+    console.log('   No slideshows in portal');
+    return;
+  }
+  
+  const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  console.log(`   Total slideshows: ${data.slideshows.length}`);
+  console.log('');
+  
+  data.slideshows.slice(0, 5).forEach((s, i) => {
+    const date = new Date(s.created_at).toLocaleDateString();
+    console.log(`   ${i + 1}. ${s.id}`);
+    console.log(`      Hook: ${s.hook.substring(0, 50)}...`);
+    console.log(`      Slides: ${s.slides.length} | Created: ${date}`);
+  });
+  
+  if (data.slideshows.length > 5) {
+    console.log(`   ... and ${data.slideshows.length - 5} more`);
+  }
 }
 
 // CLI usage
@@ -162,13 +494,28 @@ if (process.argv[1] === __filename) {
     pushToGitHub();
   } else if (args[0] === 'clear') {
     clearOldSlideshows(parseInt(args[1]) || 20);
+  } else if (args[0] === 'approved') {
+    const count = args[1] ? parseInt(args[1]) : null;
+    pushApprovedSlideshows(count);
+  } else if (args[0] === 'status') {
+    showStatus();
   } else {
     console.log(`
 Usage:
-  node scripts/push-approved.js push     - Push to GitHub
-  node scripts/push-approved.js clear N  - Keep only N newest slideshows
+  node scripts/push-approved.js push              - Push to GitHub
+  node scripts/push-approved.js clear N         - Keep only N newest slideshows
+  node scripts/push-approved.js approved [N] - Push N approved slideshows from TikTok Generator
+  node scripts/push-approved.js status           - Show portal status
     `);
   }
 }
 
-export default { addSlideshow, pushToGitHub, clearOldSlideshows };
+export default { 
+  addSlideshow, 
+  pushToGitHub, 
+  clearOldSlideshows, 
+  getApprovedSlideshows, 
+  pushApprovedSlideshows,
+  showStatus,
+  isSlideshowInPortal 
+};
