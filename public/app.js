@@ -1,17 +1,13 @@
 // TikTok Native Portal - App.js
-// Semi-manual upload workflow
+// Semi-manual upload workflow - Mobile optimized
 
 const API = {
-  // In production, this serves from Vercel
-  // Data is fetched directly from static JSON
   slideshowsUrl: '/api/slideshows.json'
 };
 
-// State
 let slideshows = [];
 let downloadedStates = {};
 
-// Initialize
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
@@ -26,7 +22,6 @@ async function loadSlideshows() {
     const data = await response.json();
     slideshows = data.slideshows || [];
     
-    // Load downloaded states from localStorage
     const saved = localStorage.getItem('tiktok-portal-downloaded');
     downloadedStates = saved ? JSON.parse(saved) : {};
   } catch (error) {
@@ -48,7 +43,6 @@ function renderSlideshows() {
     return;
   }
 
-  // Sort by date (newest first)
   const sorted = [...slideshows].sort((a, b) => 
     new Date(b.created_at) - new Date(a.created_at)
   );
@@ -60,6 +54,7 @@ function renderSlideshowCard(slideshow) {
   const isDownloaded = downloadedStates[slideshow.id];
   const timestamp = formatTimestamp(slideshow.created_at);
   const badgeText = isDownloaded ? '✓ Downloaded' : 'New';
+  const slideCount = slideshow.slides ? slideshow.slides.length : 0;
   
   return `
     <div class="slideshow-card" data-id="${slideshow.id}">
@@ -78,44 +73,67 @@ function renderSlideshowCard(slideshow) {
                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
         </div>
         
+        <div class="info-bar">
+          <span class="slide-count">📸 ${slideCount} Slides</span>
+        </div>
+
         <div class="download-buttons">
           <button class="btn btn-download-full" data-action="download-full" data-id="${slideshow.id}">
-            📥 Full Preview
+            📥 Preview
           </button>
-          <button class="btn btn-download-raw" data-action="download-raw" data-id="${slideshow.id}">
-            🖼️ Raw Images
-          </button>
+        </div>
+        
+        <div class="warning-banner">
+          ⚠️ Raw images contain text - use TikTok's text tool to overlay
         </div>
       </div>
 
       <div class="expand-toggle">
         <button class="btn-expand" data-action="toggle-expand" data-id="${slideshow.id}">
-          <span class="expand-text">▼ Texte anzeigen</span>
+          <span class="expand-text">▼ Slides & Texte</span>
         </button>
       </div>
 
       <div class="slides-container hidden" data-slides="${slideshow.id}">
-        ${slideshow.slides.map((slide, i) => renderSlide(slide, i)).join('')}
+        ${slideshow.slides ? slideshow.slides.map((slide, i) => renderSlide(slide, i, slideshow.id)).join('') : ''}
       </div>
     </div>
   `;
 }
 
-function renderSlide(slide, index) {
+function renderSlide(slide, index, slideshowId) {
   return `
     <div class="slide-item" data-index="${index}">
-      <div class="slide-header">Slide <span class="slide-num">${index + 1}</span></div>
+      <div class="slide-header">
+        <span class="slide-num">Slide ${index + 1}</span>
+      </div>
+      
+      <div class="slide-preview-container">
+        <img class="slide-preview-img" 
+             src="${slide.raw_image}" 
+             alt="Slide ${index + 1}"
+             onerror="this.style.display='none'">
+      </div>
+      
       <div class="slide-content">
         <div class="text-row">
           <label>Headline:</label>
           <div class="text-value headline-text">${escapeHtml(slide.headline)}</div>
           <button class="btn-copy" data-action="copy-headline" data-text="${escapeAttr(slide.headline)}">📋</button>
         </div>
+        ${slide.subline ? `
         <div class="text-row">
           <label>Subline:</label>
           <div class="text-value subline-text">${escapeHtml(slide.subline)}</div>
           <button class="btn-copy" data-action="copy-subline" data-text="${escapeAttr(slide.subline)}">📋</button>
         </div>
+        ` : ''}
+      </div>
+      
+      <div class="slide-download">
+        <button class="btn btn-download-slide" data-action="download-raw-slide" data-id="${slideshowId}" data-slide="${index}" data-url="${slide.raw_image}">
+          📥 Download Raw
+        </button>
       </div>
     </div>
   `;
@@ -131,13 +149,15 @@ function handleAction(e) {
 
   const action = btn.dataset.action;
   const id = btn.dataset.id;
+  const slideIndex = btn.dataset.slide;
+  const url = btn.dataset.url;
 
   switch (action) {
     case 'download-full':
       downloadFullPreview(id);
       break;
-    case 'download-raw':
-      downloadRawImages(id);
+    case 'download-raw-slide':
+      downloadRawSlide(id, slideIndex, url);
       break;
     case 'toggle-expand':
       toggleExpand(id, btn);
@@ -153,32 +173,28 @@ function downloadFullPreview(slideshowId) {
   const slideshow = slideshows.find(s => s.id === slideshowId);
   if (!slideshow) return;
 
-  // Create download link
   const link = document.createElement('a');
   link.href = slideshow.full_preview;
-  link.download = `${slideshowId}-full-preview.png`;
+  link.download = `${slideshowId}-preview.jpg`;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
 
   markAsDownloaded(slideshowId);
   showToast('Preview heruntergeladen!');
 }
 
-function downloadRawImages(slideshowId) {
-  const slideshow = slideshows.find(s => s.id === slideshowId);
-  if (!slideshow) return;
+function downloadRawSlide(slideshowId, slideIndex, url) {
+  // Create a direct download link
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${slideshowId}-slide-${parseInt(slideIndex) + 1}.jpg`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 
-  // Download each raw image
-  slideshow.slides.forEach((slide, i) => {
-    setTimeout(() => {
-      const link = document.createElement('a');
-      link.href = slide.raw_image;
-      link.download = `${slideshowId}-slide-${i + 1}-raw.png`;
-      link.click();
-    }, i * 300); // Stagger downloads
-  });
-
-  markAsDownloaded(slideshowId);
-  showToast(`${slideshow.slides.length} Raw Images heruntergeladen!`);
+  showToast(`Slide ${parseInt(slideIndex) + 1} heruntergeladen!`);
 }
 
 function toggleExpand(slideshowId, btn) {
@@ -189,19 +205,24 @@ function toggleExpand(slideshowId, btn) {
   container.classList.toggle('hidden');
   
   const textSpan = btn.querySelector('.expand-text');
-  textSpan.textContent = isHidden ? '▲ Texte ausblenden' : '▼ Texte anzeigen';
+  textSpan.textContent = isHidden ? '▲ Slides & Texte' : '▼ Slides & Texte';
 }
 
 function copyToClipboard(text, btn) {
+  if (!text) {
+    showToast('Kein Text zum Kopieren');
+    return;
+  }
+
   navigator.clipboard.writeText(text).then(() => {
-    // Visual feedback
     btn.classList.add('copied');
     setTimeout(() => btn.classList.remove('copied'), 1500);
     showToast('Kopiert!');
   }).catch(() => {
-    // Fallback
     const textarea = document.createElement('textarea');
     textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
     document.body.appendChild(textarea);
     textarea.select();
     document.execCommand('copy');
@@ -214,7 +235,6 @@ function markAsDownloaded(slideshowId) {
   downloadedStates[slideshowId] = true;
   localStorage.setItem('tiktok-portal-downloaded', JSON.stringify(downloadedStates));
   
-  // Update UI
   const badge = document.querySelector(`[data-id="${slideshowId}"] .badge`);
   if (badge) {
     badge.textContent = '✓ Downloaded';
@@ -223,7 +243,6 @@ function markAsDownloaded(slideshowId) {
 }
 
 function showToast(message) {
-  // Remove existing toast
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
@@ -264,11 +283,13 @@ function formatTimestamp(isoString) {
 }
 
 function escapeHtml(text) {
+  if (!text) return '';
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
 function escapeAttr(text) {
+  if (!text) return '';
   return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
