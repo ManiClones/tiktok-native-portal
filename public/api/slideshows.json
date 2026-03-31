@@ -2,7 +2,7 @@
   "slideshows": [
     {
       "id": "v1_20260319_023532_01",
-      "created_at": "2026-03-31T13:49:54.289Z",
+      "created_at": "2026-03-31T14:06:15.543Z",
       "hook": "Study smarter until you're the smartest in the room 🧠📚",
       "downloaded": false,
       "slides": [
@@ -12,7 +12,7 @@
           "subline": "",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-0.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-0.jpg",
-          "hasRaw": false
+          "hasRaw": true
         },
         {
           "index": 1,
@@ -20,7 +20,7 @@
           "subline": "Talk to yourself out loud until you sound crazy. Narrate what you're doing in English while you cook, clean, rest, etc..",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-1.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-1.jpg",
-          "hasRaw": false
+          "hasRaw": true
         },
         {
           "index": 2,
@@ -28,7 +28,7 @@
           "subline": "Voice notes, quizzes, flashcards, mind maps & Feynman feedback in one study app",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-2.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-2.jpg",
-          "hasRaw": false
+          "hasRaw": true
         },
         {
           "index": 3,
@@ -36,7 +36,7 @@
           "subline": "Don't just memorize. Use the Feynman Technique: explain it like you're teaching a 5 year old. If you can't explain it simply, you don't get it yet.",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-3.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-3.jpg",
-          "hasRaw": false
+          "hasRaw": true
         },
         {
           "index": 4,
@@ -44,7 +44,7 @@
           "subline": "Stop cramming the night before. Space your study sessions out. Review a little every day instead of everything at once.",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-4.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-4.jpg",
-          "hasRaw": false
+          "hasRaw": true
         },
         {
           "index": 5,
@@ -52,11 +52,11 @@
           "subline": "Make a study plan and actually stick to it. No plan = no structure = panic mode before every exam.",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-5.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-5.jpg",
-          "hasRaw": false
+          "hasRaw": true
         }
       ],
       "full_preview": "/slideshows/v1_20260319_023532_01-slide-0.jpg",
-      "has_raw_backgrounds": false
+      "has_raw_backgrounds": true
     }
   ]
 }
