@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TikTok Native Portal</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📱 TikTok Portal</h1>
+      <p class="subtitle">Semi-Manual Upload</p>
+    </header>
+
+    <main id="slideshows-container">
+      <!-- Slideshows werden hier dynamisch geladen -->
+      <div class="loading">Lade...</div>
+    </main>
+
+    <footer>
+      <small>PHNTM Native Upload Portal</small>
+    </footer>
+  </div>
+
+  <!-- Template für Slideshow Card -->
+  <template id="slideshow-card-template">
+    <div class="slideshow-card" data-id="">
+      <div class="card-header">
+        <span class="timestamp"></span>
+        <span class="badge"></span>
+      </div>
+      
+      <div class="card-body">
+        <div class="hook-preview"></div>
+        
+        <div class="preview-container">
+          <img class="full-preview" src="" alt="Slideshow Preview">
+        </div>
+        
+        <div class="download-buttons">
+          <button class="btn btn-download-full" data-action="download-full">
+            📥 Full Preview
+          </button>
+          <button class="btn btn-download-raw" data-action="download-raw">
+            🖼️ Raw Images
+          </button>
+        </div>
+      </div>
+
+      <div class="expand-toggle">
+        <button class="btn-expand">
+          <span class="expand-text">▼ Texte anzeigen</span>
+        </button>
+      </div>
+
+      <div class="slides-container hidden">
+        <!-- Slides werden hier eingefügt -->
+      </div>
+    </div>
+  </template>
+
+  <!-- Template für einzelne Slide -->
+  <template id="slide-template">
+    <div class="slide-item" data-index="">
+      <div class="slide-header">Slide <span class="slide-num"></span></div>
+      <div class="slide-content">
+        <div class="text-row">
+          <label>Headline:</label>
+          <div class="text-value headline-text"></div>
+          <button class="btn-copy" data-action="copy-headline">📋</button>
+        </div>
+        <div class="text-row">
+          <label>Subline:</label>
+          <div class="text-value subline-text"></div>
+          <button class="btn-copy" data-action="copy-subline">📋</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

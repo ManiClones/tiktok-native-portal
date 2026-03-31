@@ -1,0 +1,13 @@
+{
+  "name": "tiktok-native-portal",
+  "version": "1.0.0",
+  "description": "Semi-manual TikTok slideshow upload portal - Mobile-friendly",
+  "scripts": {
+    "push": "node scripts/push-approved.js",
+    "serve": "npx serve public",
+    "deploy": "git add . && git commit -m 'Update slideshows' && git push"
+  },
+  "keywords": ["tiktok", "slideshow", "native-upload"],
+  "author": "PHNTM",
+  "license": "MIT"
+}

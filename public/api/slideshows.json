@@ -1,0 +1,27 @@
+{
+  "slideshows": [
+    {
+      "id": "example-001",
+      "created_at": "2026-03-30T22:00:00Z",
+      "hook": "Example Hook - This will be replaced with real content",
+      "downloaded": false,
+      "slides": [
+        {
+          "index": 0,
+          "headline": "Example Headline 1",
+          "subline": "Example Subline 1",
+          "raw_image": "/raw-images/example-001-slide-0.png",
+          "composite_image": "/slideshows/example-001-slide-0.png"
+        },
+        {
+          "index": 1,
+          "headline": "Example Headline 2",
+          "subline": "Example Subline 2",
+          "raw_image": "/raw-images/example-001-slide-1.png",
+          "composite_image": "/slideshows/example-001-slide-1.png"
+        }
+      ],
+      "full_preview": "/slideshows/example-001-full.png"
+    }
+  ]
+}

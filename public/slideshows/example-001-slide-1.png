@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
+  <rect fill="#2a1a2a" width="1080" height="1920"/>
+  <text fill="#ff0050" font-size="48" font-family="sans-serif" text-anchor="middle" x="540" y="900">🖼️</text>
+  <text fill="#666" font-size="32" font-family="sans-serif" text-anchor="middle" x="540" y="960">Demo Preview</text>
+  <text fill="#fff" font-size="64" font-family="sans-serif" text-anchor="middle" x="540" y="1100">Example Headline 2</text>
+  <text fill="#a0a0a0" font-size="40" font-family="sans-serif" text-anchor="middle" x="540" y="1200">Example Subline 2</text>
+</svg>
