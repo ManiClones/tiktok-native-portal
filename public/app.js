@@ -7,6 +7,7 @@ const API = {
 
 let slideshows = [];
 let downloadedStates = {};
+let currentSlideIndexes = {}; // Track current slide for each slideshow
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -47,17 +48,14 @@ function renderSlideshows() {
     new Date(b.created_at) - new Date(a.created_at)
   );
 
-  container.innerHTML = sorted.map(slideshow => renderSlideshowCard(slideshow)).join('');
-}
-
-function renderSlideshowCard(slideshow) {
-  const isDownloaded = downloadedStates[slideshow.id];
-  const timestamp = formatTimestamp(slideshow.created_at);
-  const badgeText = isDownloaded ? '✓ Downloaded' : 'New';
-  const slideCount = slideshow.slides ? slideshow.slides.length : 0;
-  const hasRealRaw = slideshow.slides && slideshow.slides.some(s => s.hasRaw);
-  
-  return `
+  container.innerHTML = sorted.map(slideshow => {
+    const isDownloaded = downloadedStates[slideshow.id];
+    const timestamp = formatTimestamp(slideshow.created_at);
+    const badgeText = isDownloaded ? '✓ Downloaded' : 'New';
+    const slideCount = slideshow.slides ? slideshow.slides.length : 0;
+    const hasRealRaw = slideshow.slides && slideshow.slides.some(s => s.hasRaw);
+    
+    return `
     <div class="slideshow-card" data-id="${slideshow.id}">
       <div class="card-header">
         <span class="timestamp">${timestamp}</span>
@@ -67,38 +65,45 @@ function renderSlideshowCard(slideshow) {
       <div class="card-body">
         <div class="hook-preview">"${escapeHtml(slideshow.hook)}"</div>
         
-        <div class="preview-container">
-          <img class="full-preview" 
-               src="${slideshow.full_preview}" 
-               alt="Slideshow Preview"
-               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+        <!-- INTERACTIVE PREVIEW SWIPER -->
+        <div class="preview-swiper" data-slideshow="${slideshow.id}">
+          <div class="swiper-container" data-slideshow="${slideshow.id}">
+            ${slideshow.slides ? slideshow.slides.map((slide, i) => `
+              <div class="swiper-slide" data-index="${i}">
+                <img src="${slide.composite_image}" alt="Slide ${i+1}" 
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+              </div>
+            `).join('') : ''}
+          </div>
+          <div class="swiper-nav">
+            <button class="swiper-btn swiper-prev" data-action="swiper-prev" data-id="${slideshow.id}">‹</button>
+            <span class="swiper-counter">
+              <span class="current-slide">1</span> / ${slideCount}
+            </span>
+            <button class="swiper-btn swiper-next" data-action="swiper-next" data-id="${slideshow.id}">›</button>
+          </div>
+          <div class="swiper-dots">
+            ${slideshow.slides ? slideshow.slides.map((_, i) => `
+              <span class="swiper-dot ${i === 0 ? 'active' : ''}" data-index="${i}" data-slideshow="${slideshow.id}"></span>
+            `).join('') : ''}
+          </div>
         </div>
         
         <div class="info-bar">
           <span class="slide-count">📸 ${slideCount} Slides</span>
-          ${hasRealRaw ? '<span class="raw-badge">✓ Raw Backgrounds</span>' : ''}
+          ${hasRealRaw ? '<span class="raw-badge">✓ Raw</span>' : ''}
         </div>
 
         <div class="download-buttons">
-          <button class="btn btn-download-full" data-action="download-full" data-id="${slideshow.id}">
-            📥 Preview
+          <button class="btn btn-download-all" data-action="download-all" data-id="${slideshow.id}">
+            📥 Download All Raw
           </button>
         </div>
-        
-        ${!hasRealRaw ? `
-        <div class="warning-banner">
-          ⚠️ Raw images contain text - use TikTok's text tool to overlay
-        </div>
-        ` : `
-        <div class="success-banner">
-          ✓ Raw backgrounds available (no text)
-        </div>
-        `}
       </div>
 
       <div class="expand-toggle">
         <button class="btn-expand" data-action="toggle-expand" data-id="${slideshow.id}">
-          <span class="expand-text">▼ Slides & Texte</span>
+          <span class="expand-text">▼ Raw Slides & Texte</span>
         </button>
       </div>
 
@@ -106,7 +111,13 @@ function renderSlideshowCard(slideshow) {
         ${slideshow.slides ? slideshow.slides.map((slide, i) => renderSlide(slide, i, slideshow.id, hasRealRaw)).join('') : ''}
       </div>
     </div>
-  `;
+    `;
+  }).join('');
+  
+  // Initialize swiper states
+  slideshows.forEach(s => {
+    currentSlideIndexes[s.id] = 0;
+  });
 }
 
 function renderSlide(slide, index, slideshowId, hasRealRaw) {
@@ -151,10 +162,55 @@ function renderSlide(slide, index, slideshowId, hasRealRaw) {
 
 function setupEventListeners() {
   document.getElementById('slideshows-container').addEventListener('click', handleAction);
+  
+  // Touch swipe for swipers
+  setupSwipeGestures();
+}
+
+function setupSwipeGestures() {
+  document.querySelectorAll('.swiper-container').forEach(container => {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    container.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    container.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe(container, touchStartX, touchEndX);
+    }, { passive: true });
+  });
+}
+
+function handleSwipe(container, startX, endX) {
+  const threshold = 50;
+  const diff = startX - endX;
+  
+  if (Math.abs(diff) < threshold) return;
+  
+  const slideshowId = container.dataset.slideshow;
+  
+  if (diff > 0) {
+    // Swipe left - next
+    swiperGoTo(slideshowId, 'next');
+  } else {
+    // Swipe right - prev
+    swiperGoTo(slideshowId, 'prev');
+  }
 }
 
 function handleAction(e) {
   const btn = e.target.closest('button');
+  const dot = e.target.closest('.swiper-dot');
+  
+  if (dot) {
+    const slideshowId = dot.dataset.slideshow;
+    const index = parseInt(dot.dataset.index);
+    swiperGoToSlide(slideshowId, index);
+    return;
+  }
+  
   if (!btn) return;
 
   const action = btn.dataset.action;
@@ -163,8 +219,8 @@ function handleAction(e) {
   const url = btn.dataset.url;
 
   switch (action) {
-    case 'download-full':
-      downloadFullPreview(id);
+    case 'download-all':
+      downloadAllRaw(id);
       break;
     case 'download-raw-slide':
       downloadRawSlide(id, slideIndex, url);
@@ -176,26 +232,77 @@ function handleAction(e) {
     case 'copy-subline':
       copyToClipboard(btn.dataset.text, btn);
       break;
+    case 'swiper-prev':
+      swiperGoTo(id, 'prev');
+      break;
+    case 'swiper-next':
+      swiperGoTo(id, 'next');
+      break;
   }
 }
 
-function downloadFullPreview(slideshowId) {
+function swiperGoTo(slideshowId, direction) {
   const slideshow = slideshows.find(s => s.id === slideshowId);
-  if (!slideshow) return;
+  if (!slideshow || !slideshow.slides) return;
+  
+  let currentIndex = currentSlideIndexes[slideshowId] || 0;
+  const total = slideshow.slides.length;
+  
+  if (direction === 'next') {
+    currentIndex = (currentIndex + 1) % total;
+  } else {
+    currentIndex = (currentIndex - 1 + total) % total;
+  }
+  
+  swiperGoToSlide(slideshowId, currentIndex);
+}
 
-  const link = document.createElement('a');
-  link.href = slideshow.full_preview;
-  link.download = `${slideshowId}-preview.jpg`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+function swiperGoToSlide(slideshowId, index) {
+  const slideshow = slideshows.find(s => s.id === slideshowId);
+  if (!slideshow || !slideshow.slides) return;
+  
+  currentSlideIndexes[slideshowId] = index;
+  
+  // Update slides position
+  const container = document.querySelector(`.swiper-container[data-slideshow="${slideshowId}"]`);
+  if (container) {
+    container.style.transform = `translateX(-${index * 100}%)`;
+  }
+  
+  // Update counter
+  const counter = document.querySelector(`.preview-swiper[data-slideshow="${slideshowId}"] .current-slide`);
+  if (counter) {
+    counter.textContent = index + 1;
+  }
+  
+  // Update dots
+  document.querySelectorAll(`.swiper-dot[data-slideshow="${slideshowId}"]`).forEach((dot, i) => {
+    dot.classList.toggle('active', i === index);
+  });
+}
+
+function downloadAllRaw(slideshowId) {
+  const slideshow = slideshows.find(s => s.id === slideshowId);
+  if (!slideshow || !slideshow.slides) return;
+
+  // Download each raw image with stagger
+  slideshow.slides.forEach((slide, i) => {
+    setTimeout(() => {
+      const link = document.createElement('a');
+      link.href = slide.raw_image;
+      link.download = `${slideshowId}-slide-${i + 1}.jpg`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, i * 200);
+  });
 
   markAsDownloaded(slideshowId);
-  showToast('Preview heruntergeladen!');
+  showToast(`${slideshow.slides.length} Raw Images heruntergeladen!`);
 }
 
 function downloadRawSlide(slideshowId, slideIndex, url) {
-  // Create a direct download link
   const link = document.createElement('a');
   link.href = url;
   link.download = `${slideshowId}-slide-${parseInt(slideIndex) + 1}.jpg`;
@@ -208,14 +315,14 @@ function downloadRawSlide(slideshowId, slideIndex, url) {
 }
 
 function toggleExpand(slideshowId, btn) {
-  const container = document.querySelector(`[data-slides="${slideshowId}"]`);
+  const container = document.querySelector(`.slides-container[data-slides="${slideshowId}"]`);
   if (!container) return;
 
   const isHidden = container.classList.contains('hidden');
   container.classList.toggle('hidden');
   
   const textSpan = btn.querySelector('.expand-text');
-  textSpan.textContent = isHidden ? '▲ Slides & Texte' : '▼ Slides & Texte';
+  textSpan.textContent = isHidden ? '▲ Raw Slides & Texte' : '▼ Raw Slides & Texte';
 }
 
 function copyToClipboard(text, btn) {
