@@ -280,7 +280,7 @@ function extractSlideText(meta, slideIndex) {
     case 'cta':
       return {
         headline: slide.header || slide.label || '',
-        subline: [slide.app_name, slide.description].filter(Boolean).join(' — ')
+        subline: [slide.app_name, slide.description, slide.text].filter(Boolean).join(' — ')
       };
     case 'tip':
       return {

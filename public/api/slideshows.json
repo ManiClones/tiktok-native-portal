@@ -2,7 +2,7 @@
   "slideshows": [
     {
       "id": "v1_20260319_023532_01",
-      "created_at": "2026-03-31T13:49:30.196Z",
+      "created_at": "2026-03-31T13:49:54.289Z",
       "hook": "Study smarter until you're the smartest in the room 🧠📚",
       "downloaded": false,
       "slides": [
@@ -25,7 +25,7 @@
         {
           "index": 2,
           "headline": "Use SHORTCT",
-          "subline": "",
+          "subline": "Voice notes, quizzes, flashcards, mind maps & Feynman feedback in one study app",
           "composite_image": "/slideshows/v1_20260319_023532_01-slide-2.jpg",
           "raw_image": "/raw-images/v1_20260319_023532_01-slide-2.jpg",
           "hasRaw": false
