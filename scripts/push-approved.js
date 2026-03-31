@@ -28,7 +28,11 @@ const ROOT_DIR = path.join(__dirname, '..');
 const DATA_FILE = path.join(ROOT_DIR, 'public', 'api', 'slideshows.json');
 const PUBLIC_SLIDESHOWS = path.join(ROOT_DIR, 'public', 'slideshows');
 const PUBLIC_RAW = path.join(ROOT_DIR, 'public', 'raw-images');
-const TIKTOK_GENERATOR = '/home/node/.openclaw/workspace/coding/TikTokGenerator';
+// Support both Linux (server) and macOS (local) paths
+const TIKTOK_GENERATOR = process.env.TIKTOK_GENERATOR_ROOT
+  || (fs.existsSync('/home/node/.openclaw/workspace/coding/TikTokGenerator')
+    ? '/home/node/.openclaw/workspace/coding/TikTokGenerator'
+    : path.resolve(ROOT_DIR, '..', 'TikTokGenerator'));
 
 // Ensure directories exist
 [PUBLIC_SLIDESHOWS, PUBLIC_RAW].forEach(dir => {
@@ -77,16 +81,35 @@ function isSlideshowInPortal(slideshowId) {
 }
 
 /**
+ * Check if meta.json uses the structured format (slides as objects)
+ * vs the old Postiz format (slides as filename strings)
+ */
+function isStructuredFormat(meta) {
+  if (!meta.slides || !Array.isArray(meta.slides) || meta.slides.length === 0) {
+    return false;
+  }
+  return typeof meta.slides[0] === 'object';
+}
+
+/**
  * Extract hook text from meta
  */
 function extractHookText(meta) {
-  if (!meta.slides || !Array.isArray(meta.slides)) return 'Untitled';
-  
-  const hookSlide = meta.slides.find(s => s.type === 'hook');
-  if (hookSlide) {
-    return hookSlide.headline || hookSlide.text || 'Untitled';
+  // Structured format: slides are objects with type/headline
+  if (isStructuredFormat(meta)) {
+    const hookSlide = meta.slides.find(s => s.type === 'hook');
+    if (hookSlide) {
+      return hookSlide.headline || hookSlide.text || 'Untitled';
+    }
+    // If no hook type found, use first slide's text
+    const first = meta.slides[0];
+    return first.headline || first.text || first.header || 'Untitled';
   }
-  
+
+  // Old Postiz format: use caption field
+  if (meta.caption) return meta.caption;
+  if (meta.title) return meta.title;
+
   return 'Untitled';
 }
 
@@ -94,12 +117,21 @@ function extractHookText(meta) {
  * Extract text for a specific slide
  */
 function extractSlideText(meta, slideIndex) {
-  if (!meta.slides || !meta.slides[slideIndex]) {
+  // Old Postiz format: slides are filename strings, no text available
+  if (!isStructuredFormat(meta)) {
+    // Try to get hook text from caption for first slide
+    if (slideIndex === 0 && meta.caption) {
+      return { headline: meta.caption, subline: '' };
+    }
     return { headline: '', subline: '' };
   }
-  
+
+  if (!meta.slides[slideIndex]) {
+    return { headline: '', subline: '' };
+  }
+
   const slide = meta.slides[slideIndex];
-  
+
   switch (slide.type) {
     case 'hook':
       return {
@@ -113,23 +145,35 @@ function extractSlideText(meta, slideIndex) {
       };
     case 'methods':
       return {
-        headline: slide.methods?.join(' • ') || '',
+        headline: (slide.methods || []).join('\n'),
         subline: ''
       };
     case 'cta':
       return {
-        headline: slide.header || '',
-        subline: `${slide.app_name || ''} - ${slide.description || ''}`
+        headline: slide.header || slide.label || '',
+        subline: [slide.app_name, slide.description].filter(Boolean).join(' — ')
       };
     case 'tip':
       return {
-        headline: `${slide.label || ''}: ${slide.text || ''}`,
-        subline: ''
+        headline: slide.label || '',
+        subline: slide.text || ''
       };
+    case 'steps':
+      // V2 steps slide: concatenate all step headers and texts
+      if (Array.isArray(slide.steps)) {
+        const stepsText = slide.steps.map(s =>
+          `${s.header || ''}\n${s.text || ''}`
+        ).join('\n\n');
+        return {
+          headline: 'Study Steps',
+          subline: stepsText
+        };
+      }
+      return { headline: 'Steps', subline: '' };
     default:
       return {
-        headline: slide.headline || slide.text || '',
-        subline: ''
+        headline: slide.headline || slide.text || slide.header || '',
+        subline: slide.description || ''
       };
   }
 }

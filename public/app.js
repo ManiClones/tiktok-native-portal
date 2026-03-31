@@ -133,35 +133,48 @@ function renderSlideshows() {
 
 function renderSlide(slide, index, slideshowId, hasRealRaw) {
   const downloadLabel = hasRealRaw ? '📥 Raw' : '📥 Image';
-  
+  const hasHeadline = slide.headline && slide.headline.trim();
+  const hasSubline = slide.subline && slide.subline.trim();
+
+  // Convert newlines to <br> for display, keep raw text for copy
+  const headlineHtml = escapeHtml(slide.headline || '').replace(/\n/g, '<br>');
+  const sublineHtml = escapeHtml(slide.subline || '').replace(/\n/g, '<br>');
+
   return `
     <div class="slide-item" data-index="${index}">
       <div class="slide-header">
         <span class="slide-num">Slide ${index + 1}</span>
       </div>
-      
+
       <div class="slide-preview-container">
-        <img class="slide-preview-img" 
-             src="${slide.raw_image}" 
+        <img class="slide-preview-img"
+             src="${slide.raw_image}"
              alt="Slide ${index + 1}"
              onerror="this.style.display='none'">
       </div>
-      
+
       <div class="slide-content">
+        ${hasHeadline ? `
         <div class="text-row">
           <label>Headline:</label>
-          <div class="text-value headline-text">${escapeHtml(slide.headline)}</div>
+          <div class="text-value headline-text">${headlineHtml}</div>
           <button class="btn-copy" data-action="copy-headline" data-text="${escapeAttr(slide.headline)}">📋</button>
         </div>
-        ${slide.subline ? `
+        ` : ''}
+        ${hasSubline ? `
         <div class="text-row">
-          <label>Subline:</label>
-          <div class="text-value subline-text">${escapeHtml(slide.subline)}</div>
+          <label>Text:</label>
+          <div class="text-value subline-text">${sublineHtml}</div>
           <button class="btn-copy" data-action="copy-subline" data-text="${escapeAttr(slide.subline)}">📋</button>
         </div>
         ` : ''}
+        ${!hasHeadline && !hasSubline ? `
+        <div class="text-row">
+          <label class="no-text">Kein Text verfügbar</label>
+        </div>
+        ` : ''}
       </div>
-      
+
       <div class="slide-download">
         <button class="btn btn-download-slide" data-action="download-raw-slide" data-id="${slideshowId}" data-slide="${index}" data-url="${slide.raw_image}">
           ${downloadLabel}
