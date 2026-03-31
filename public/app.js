@@ -7,6 +7,7 @@ const API = {
 
 let slideshows = [];
 let downloadedStates = {};
+let deletedIds = {};
 let currentSlideIndexes = {}; // Track current slide for each slideshow
 
 document.addEventListener('DOMContentLoaded', init);
@@ -25,6 +26,9 @@ async function loadSlideshows() {
     
     const saved = localStorage.getItem('tiktok-portal-downloaded');
     downloadedStates = saved ? JSON.parse(saved) : {};
+    
+    const deleted = localStorage.getItem('tiktok-portal-deleted');
+    deletedIds = deleted ? JSON.parse(deleted) : {};
   } catch (error) {
     console.error('Failed to load slideshows:', error);
     showError('Fehler beim Laden der Slideshows');
@@ -34,17 +38,21 @@ async function loadSlideshows() {
 function renderSlideshows() {
   const container = document.getElementById('slideshows-container');
   
-  if (slideshows.length === 0) {
+  // Filter out deleted slideshows
+  const visibleSlideshows = slideshows.filter(s => !deletedIds[s.id]);
+  
+  if (visibleSlideshows.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="icon">📭</div>
         <p>Keine Slideshows vorhanden</p>
+        ${Object.keys(deletedIds).length > 0 ? '<button class="btn btn-restore" data-action="restore-all">🗑️ Gelöschte wiederherstellen</button>' : ''}
       </div>
     `;
     return;
   }
 
-  const sorted = [...slideshows].sort((a, b) => 
+  const sorted = [...visibleSlideshows].sort((a, b) => 
     new Date(b.created_at) - new Date(a.created_at)
   );
 
@@ -59,7 +67,10 @@ function renderSlideshows() {
     <div class="slideshow-card" data-id="${slideshow.id}">
       <div class="card-header">
         <span class="timestamp">${timestamp}</span>
-        <span class="badge ${isDownloaded ? 'downloaded' : ''}">${badgeText}</span>
+        <div class="header-actions">
+          <span class="badge ${isDownloaded ? 'downloaded' : ''}">${badgeText}</span>
+          <button class="btn-delete" data-action="delete" data-id="${slideshow.id}" title="Löschen">🗑️</button>
+        </div>
       </div>
       
       <div class="card-body">
@@ -238,6 +249,12 @@ function handleAction(e) {
     case 'swiper-next':
       swiperGoTo(id, 'next');
       break;
+    case 'delete':
+      deleteSlideshow(id);
+      break;
+    case 'restore-all':
+      restoreAllDeleted();
+      break;
   }
 }
 
@@ -357,6 +374,33 @@ function markAsDownloaded(slideshowId) {
     badge.textContent = '✓ Downloaded';
     badge.classList.add('downloaded');
   }
+}
+
+function deleteSlideshow(slideshowId) {
+  if (!confirm('Slideshow löschen?')) return;
+  
+  deletedIds[slideshowId] = true;
+  localStorage.setItem('tiktok-portal-deleted', JSON.stringify(deletedIds));
+  
+  // Animate out
+  const card = document.querySelector(`.slideshow-card[data-id="${slideshowId}"]`);
+  if (card) {
+    card.style.transition = 'opacity 0.3s, transform 0.3s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(-100%)';
+    
+    setTimeout(() => {
+      renderSlideshows();
+      showToast('Gelöscht!');
+    }, 300);
+  }
+}
+
+function restoreAllDeleted() {
+  deletedIds = {};
+  localStorage.removeItem('tiktok-portal-deleted');
+  renderSlideshows();
+  showToast('Alle wiederhergestellt!');
 }
 
 function showToast(message) {
