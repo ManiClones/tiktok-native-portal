@@ -11,28 +11,32 @@
           "headline": "When the professor says the exam covers everything but you know the 80/20 rule",
           "subline": "",
           "raw_image": "/raw-images/v3_20260326_024506_05-slide-0.jpg",
-          "composite_image": "/slideshows/v3_20260326_024506_05-slide-0.jpg"
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-0.jpg",
+          "hasRaw": true
         },
         {
           "index": 1,
           "headline": "Focus on:",
           "subline": "",
           "raw_image": "/raw-images/v3_20260326_024506_05-slide-1.jpg",
-          "composite_image": "/slideshows/v3_20260326_024506_05-slide-1.jpg"
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-1.jpg",
+          "hasRaw": true
         },
         {
           "index": 2,
           "headline": "High-yield topics",
           "subline": "Past exam patterns • Core concepts",
           "raw_image": "/raw-images/v3_20260326_024506_05-slide-2.jpg",
-          "composite_image": "/slideshows/v3_20260326_024506_05-slide-2.jpg"
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-2.jpg",
+          "hasRaw": true
         },
         {
           "index": 3,
           "headline": "App I use: SHORTCT",
           "subline": "AI identifies what matters most for your exams",
           "raw_image": "/raw-images/v3_20260326_024506_05-slide-3.jpg",
-          "composite_image": "/slideshows/v3_20260326_024506_05-slide-3.jpg"
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-3.jpg",
+          "hasRaw": true
         }
       ],
       "full_preview": "/slideshows/v3_20260326_024506_05-full.jpg"
