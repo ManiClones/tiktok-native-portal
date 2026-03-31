@@ -1,27 +1,41 @@
 {
   "slideshows": [
     {
-      "id": "example-001",
-      "created_at": "2026-03-30T22:00:00Z",
-      "hook": "Example Hook - This will be replaced with real content",
+      "id": "v3_20260326_024506_05",
+      "created_at": "2026-03-31T00:35:26Z",
+      "hook": "When the professor says the exam covers everything but you know the 80/20 rule",
       "downloaded": false,
       "slides": [
         {
           "index": 0,
-          "headline": "Example Headline 1",
-          "subline": "Example Subline 1",
-          "raw_image": "/raw-images/example-001-slide-0.png",
-          "composite_image": "/slideshows/example-001-slide-0.png"
+          "headline": "When the professor says the exam covers everything but you know the 80/20 rule",
+          "subline": "",
+          "raw_image": "/raw-images/v3_20260326_024506_05-slide-0.jpg",
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-0.jpg"
         },
         {
           "index": 1,
-          "headline": "Example Headline 2",
-          "subline": "Example Subline 2",
-          "raw_image": "/raw-images/example-001-slide-1.png",
-          "composite_image": "/slideshows/example-001-slide-1.png"
+          "headline": "Focus on:",
+          "subline": "",
+          "raw_image": "/raw-images/v3_20260326_024506_05-slide-1.jpg",
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-1.jpg"
+        },
+        {
+          "index": 2,
+          "headline": "High-yield topics",
+          "subline": "Past exam patterns • Core concepts",
+          "raw_image": "/raw-images/v3_20260326_024506_05-slide-2.jpg",
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-2.jpg"
+        },
+        {
+          "index": 3,
+          "headline": "App I use: SHORTCT",
+          "subline": "AI identifies what matters most for your exams",
+          "raw_image": "/raw-images/v3_20260326_024506_05-slide-3.jpg",
+          "composite_image": "/slideshows/v3_20260326_024506_05-slide-3.jpg"
         }
       ],
-      "full_preview": "/slideshows/example-001-full.png"
+      "full_preview": "/slideshows/v3_20260326_024506_05-full.jpg"
     }
   ]
 }
