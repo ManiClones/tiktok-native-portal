@@ -55,6 +55,7 @@ function renderSlideshowCard(slideshow) {
   const timestamp = formatTimestamp(slideshow.created_at);
   const badgeText = isDownloaded ? '✓ Downloaded' : 'New';
   const slideCount = slideshow.slides ? slideshow.slides.length : 0;
+  const hasRealRaw = slideshow.slides && slideshow.slides.some(s => s.hasRaw);
   
   return `
     <div class="slideshow-card" data-id="${slideshow.id}">
@@ -75,6 +76,7 @@ function renderSlideshowCard(slideshow) {
         
         <div class="info-bar">
           <span class="slide-count">📸 ${slideCount} Slides</span>
+          ${hasRealRaw ? '<span class="raw-badge">✓ Raw Backgrounds</span>' : ''}
         </div>
 
         <div class="download-buttons">
@@ -83,9 +85,15 @@ function renderSlideshowCard(slideshow) {
           </button>
         </div>
         
+        ${!hasRealRaw ? `
         <div class="warning-banner">
           ⚠️ Raw images contain text - use TikTok's text tool to overlay
         </div>
+        ` : `
+        <div class="success-banner">
+          ✓ Raw backgrounds available (no text)
+        </div>
+        `}
       </div>
 
       <div class="expand-toggle">
@@ -95,13 +103,15 @@ function renderSlideshowCard(slideshow) {
       </div>
 
       <div class="slides-container hidden" data-slides="${slideshow.id}">
-        ${slideshow.slides ? slideshow.slides.map((slide, i) => renderSlide(slide, i, slideshow.id)).join('') : ''}
+        ${slideshow.slides ? slideshow.slides.map((slide, i) => renderSlide(slide, i, slideshow.id, hasRealRaw)).join('') : ''}
       </div>
     </div>
   `;
 }
 
-function renderSlide(slide, index, slideshowId) {
+function renderSlide(slide, index, slideshowId, hasRealRaw) {
+  const downloadLabel = hasRealRaw ? '📥 Raw' : '📥 Image';
+  
   return `
     <div class="slide-item" data-index="${index}">
       <div class="slide-header">
@@ -132,7 +142,7 @@ function renderSlide(slide, index, slideshowId) {
       
       <div class="slide-download">
         <button class="btn btn-download-slide" data-action="download-raw-slide" data-id="${slideshowId}" data-slide="${index}" data-url="${slide.raw_image}">
-          📥 Download Raw
+          ${downloadLabel}
         </button>
       </div>
     </div>

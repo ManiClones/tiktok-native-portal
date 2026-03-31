@@ -2,11 +2,15 @@
 /**
  * Push Approved Slideshows to GitHub
  * 
- * Usage: node scripts/push-approved.js
+ * Usage: 
+ *   node scripts/push-approved.js approved [N]  - Push N approved slideshows (default: all)
+ *   node scripts/push-approved.js push          - Push to GitHub
+ *   node scripts/push-approved.js clear [N]     - Keep only N newest (default: 20)
+ *   node scripts/push-approved.js status         - Show portal status
  * 
  * This script:
- * 1. Takes new approved slideshows from PHNTM
- * 2. Copies images to public folders
+ * 1. Takes new approved slideshows from TikTok Generator
+ * 2. Copies composite images (with text) and raw backgrounds (without text) 
  * 3. Updates slideshows.json
  * 4. Commits and pushes to GitHub
  */
@@ -108,13 +112,31 @@ function extractSlides(meta, slideshowPath) {
     return slides;
   }
   
+  // Check if raw backgrounds exist
+  const rawBackgroundPath = path.join(slideshowPath, 'raw_background.jpg');
+  const hasRawBackground = fs.existsSync(rawBackgroundPath);
+  
   meta.slides.forEach((slide, i) => {
     const slideNum = i + 1;
-    const imagePath = path.join(slideshowPath, `slide_${slideNum}.jpg`);
+    const compositePath = path.join(slideshowPath, `slide_${slideNum}.jpg`);
+    const rawSlidePath = path.join(slideshowPath, `raw_slide_${slideNum}.jpg`);
     
-    if (!fs.existsSync(imagePath)) {
-      console.warn(`⚠️ Slide image not found: ${imagePath}`);
+    if (!fs.existsSync(compositePath)) {
+      console.warn(`⚠️ Composite image not found: ${compositePath}`);
       return;
+    }
+    
+    // Determine raw image path
+    let rawImagePath;
+    if (fs.existsSync(rawSlidePath)) {
+      // Individual raw slide exists
+      rawImagePath = rawSlidePath;
+    } else if (hasRawBackground) {
+      // Use shared raw background (for V3 all slides use same background)
+      rawImagePath = rawBackgroundPath;
+    } else {
+      // No raw available, use composite as fallback
+      rawImagePath = compositePath;
     }
     
     // Extract text based on slide type
@@ -124,17 +146,17 @@ function extractSlides(meta, slideshowPath) {
     switch (slide.type) {
       case 'hook':
         headline = slide.headline || '';
-        subline = 'Hook';
+        subline = '';
         break;
         
       case 'transition':
         headline = slide.text || '';
-        subline = 'Transition';
+        subline = '';
         break;
         
       case 'methods':
         headline = slide.methods?.join(' • ') || '';
-        subline = 'Methods';
+        subline = '';
         break;
         
       case 'cta':
@@ -144,7 +166,7 @@ function extractSlides(meta, slideshowPath) {
         
       case 'tip':
         headline = `${slide.label || ''}: ${slide.text || ''}`;
-        subline = 'Tip';
+        subline = '';
         break;
         
       case 'steps':
@@ -153,9 +175,9 @@ function extractSlides(meta, slideshowPath) {
             index: slides.length,
             headline: step.header || '',
             subline: step.text || '',
-            raw_image_path: imagePath,
-            composite_image_path: imagePath,
-            isRaw: false // These composites have text burned in
+            raw_image_path: rawImagePath,
+            composite_image_path: compositePath,
+            hasRaw: rawImagePath !== compositePath
           });
         });
         return; // Skip the default push below
@@ -169,9 +191,9 @@ function extractSlides(meta, slideshowPath) {
       index: slides.length,
       headline,
       subline,
-      raw_image_path: imagePath,
-      composite_image_path: imagePath,
-      isRaw: false // Note: These are composites with text
+      raw_image_path: rawImagePath,
+      composite_image_path: compositePath,
+      hasRaw: rawImagePath !== compositePath
     });
   });
   
@@ -219,32 +241,32 @@ export function addSlideshow(slideshowData) {
 
   // Copy images to public folders
   const slideRecords = slides.map((slide, i) => {
-    const rawDest = path.join(PUBLIC_RAW, `${id}-slide-${i}.png`);
-    const compDest = path.join(PUBLIC_SLIDESHOWS, `${id}-slide-${i}.png`);
-
-    // Copy raw image
-    if (fs.existsSync(slide.raw_image_path)) {
-      fs.copyFileSync(slide.raw_image_path, rawDest);
-      console.log(`   ✅ Copied raw image: slide-${i}.png`);
-    } else {
-      console.warn(`   ⚠️ Raw image not found: ${slide.raw_image_path}`);
-    }
+    const rawDest = path.join(PUBLIC_RAW, `${id}-slide-${i}.jpg`);
+    const compDest = path.join(PUBLIC_SLIDESHOWS, `${id}-slide-${i}.jpg`);
 
     // Copy composite image
     if (fs.existsSync(slide.composite_image_path)) {
       fs.copyFileSync(slide.composite_image_path, compDest);
-      console.log(`   ✅ Copied composite image: slide-${i}.png`);
+      console.log(`   ✅ Copied composite: slide-${i}.jpg`);
     } else {
-      console.warn(`   ⚠️ Composite image not found: ${slide.composite_image_path}`);
+      console.warn(`   ⚠️ Composite not found: ${slide.composite_image_path}`);
+    }
+
+    // Copy raw image
+    if (fs.existsSync(slide.raw_image_path)) {
+      fs.copyFileSync(slide.raw_image_path, rawDest);
+      console.log(`   ✅ Copied raw: slide-${i}.jpg`);
+    } else {
+      console.warn(`   ⚠️ Raw not found: ${slide.raw_image_path}`);
     }
 
     return {
       index: i,
       headline: slide.headline,
       subline: slide.subline,
-      raw_image: `/raw-images/${id}-slide-${i}.png`,
-      composite_image: `/slideshows/${id}-slide-${i}.png`,
-      isRaw: slide.isRaw || false
+      raw_image: `/raw-images/${id}-slide-${i}.jpg`,
+      composite_image: `/slideshows/${id}-slide-${i}.jpg`,
+      hasRaw: slide.hasRaw || false
     };
   });
 
