@@ -1,6 +1,56 @@
 {
   "slideshows": [
     {
+      "id": "v4_20260401_022513_12",
+      "created_at": "2026-04-01T23:49:27.400Z",
+      "hook": "the study methods top 1% students use daily",
+      "downloaded": false,
+      "slides": [
+        {
+          "index": 0,
+          "headline": "the study methods top 1% students use daily",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022513_12-slide-0.jpg",
+          "raw_image": "/raw-images/v4_20260401_022513_12-slide-0.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 1,
+          "headline": "",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022513_12-slide-1.jpg",
+          "raw_image": "/raw-images/v4_20260401_022513_12-slide-1.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 2,
+          "headline": "",
+          "subline": "SHORTCT — Lock your phone apps so nothing interrupts your flow",
+          "composite_image": "/slideshows/v4_20260401_022513_12-slide-2.jpg",
+          "raw_image": "/raw-images/v4_20260401_022513_12-slide-2.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 3,
+          "headline": "",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022513_12-slide-3.jpg",
+          "raw_image": "/raw-images/v4_20260401_022513_12-slide-3.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 4,
+          "headline": "",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022513_12-slide-4.jpg",
+          "raw_image": "/raw-images/v4_20260401_022513_12-slide-4.jpg",
+          "hasRaw": true
+        }
+      ],
+      "full_preview": "/slideshows/v4_20260401_022513_12-slide-0.jpg",
+      "has_raw_backgrounds": true
+    },
+    {
       "id": "v4_20260401_022518_15",
       "created_at": "2026-04-01T23:42:49.804Z",
       "hook": "the most underrated study methods nobody talks about",

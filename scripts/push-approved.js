@@ -179,6 +179,33 @@ function recoverSlidesFromDb(slideshowId) {
   }
 }
 
+function getLatestApprovedSlideshowId() {
+  if (!fs.existsSync(SQLITE_DB)) return null;
+
+  const py = [
+    'import sqlite3, sys',
+    'db_path = sys.argv[1]',
+    'conn = sqlite3.connect(db_path)',
+    'cur = conn.cursor()',
+    'cols = [row[1] for row in cur.execute("PRAGMA table_info(slideshows)").fetchall()]',
+    'if "approved_at" not in cols:',
+    '    print("")',
+    '    raise SystemExit',
+    'row = cur.execute("SELECT id FROM slideshows WHERE approved_at IS NOT NULL ORDER BY approved_at DESC LIMIT 1").fetchone()',
+    'print(row[0] if row else "")'
+  ].join('\n');
+
+  try {
+    const out = execFileSync('python3', ['-c', py, SQLITE_DB], {
+      cwd: ROOT_DIR,
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).toString().trim();
+    return out || null;
+  } catch {
+    return null;
+  }
+}
+
 function getMetaCandidates(folderPath) {
   return [
     path.join(folderPath, 'portal_meta.json'),
@@ -587,17 +614,27 @@ if (process.argv[1] === __filename) {
     case 'one':
       pushSlideshowById(args[1]);
       break;
+    case 'latest-approved': {
+      const id = getLatestApprovedSlideshowId();
+      if (!id) {
+        console.log('❌ No approved_at value found in slideshows DB');
+        break;
+      }
+      pushSlideshowById(id);
+      break;
+    }
     case 'status':
       showStatus();
       break;
     default:
       console.log(`
 Usage:
-  node scripts/push-approved.js approved [N]  - Push N slideshows (default: all)
-  node scripts/push-approved.js one <id>      - Push a specific slideshow id
-  node scripts/push-approved.js push          - Push to GitHub only
-  node scripts/push-approved.js clear [N]     - Keep N newest (default: 20)
-  node scripts/push-approved.js status         - Show status
+  node scripts/push-approved.js approved [N]       - Push N slideshows (default: all)
+  node scripts/push-approved.js one <id>           - Push a specific slideshow id
+  node scripts/push-approved.js latest-approved    - Push the latest DB-approved slideshow
+  node scripts/push-approved.js push               - Push to GitHub only
+  node scripts/push-approved.js clear [N]          - Keep N newest (default: 20)
+  node scripts/push-approved.js status             - Show status
       `);
   }
 }
