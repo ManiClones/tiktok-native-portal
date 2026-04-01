@@ -49,7 +49,7 @@ const SQLITE_DB = path.join(TIKTOK_GENERATOR, 'data', 'slideshows.db');
 function getSlideshowFolders() {
   const folders = [];
   
-  ['V1', 'V2', 'V3'].forEach(version => {
+  ['V1', 'V2', 'V3', 'V4'].forEach(version => {
     const outputDir = path.join(TIKTOK_GENERATOR, version, 'output');
     if (!fs.existsSync(outputDir)) return;
     
