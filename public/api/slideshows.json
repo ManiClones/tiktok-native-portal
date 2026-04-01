@@ -1,6 +1,56 @@
 {
   "slideshows": [
     {
+      "id": "v4_20260401_022518_15",
+      "created_at": "2026-04-01T23:42:49.804Z",
+      "hook": "the most underrated study methods nobody talks about",
+      "downloaded": false,
+      "slides": [
+        {
+          "index": 0,
+          "headline": "the most underrated study methods nobody talks about",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022518_15-slide-0.jpg",
+          "raw_image": "/raw-images/v4_20260401_022518_15-slide-0.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 1,
+          "headline": "",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022518_15-slide-1.jpg",
+          "raw_image": "/raw-images/v4_20260401_022518_15-slide-1.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 2,
+          "headline": "",
+          "subline": "SHORTCT — Teach it back to yourself and watch the gaps appear",
+          "composite_image": "/slideshows/v4_20260401_022518_15-slide-2.jpg",
+          "raw_image": "/raw-images/v4_20260401_022518_15-slide-2.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 3,
+          "headline": "",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022518_15-slide-3.jpg",
+          "raw_image": "/raw-images/v4_20260401_022518_15-slide-3.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 4,
+          "headline": "",
+          "subline": "",
+          "composite_image": "/slideshows/v4_20260401_022518_15-slide-4.jpg",
+          "raw_image": "/raw-images/v4_20260401_022518_15-slide-4.jpg",
+          "hasRaw": true
+        }
+      ],
+      "full_preview": "/slideshows/v4_20260401_022518_15-slide-0.jpg",
+      "has_raw_backgrounds": true
+    },
+    {
       "id": "v4_20260401_022508_09",
       "created_at": "2026-04-01T00:53:44.309Z",
       "hook": "the only 4 study methods you will ever need",
