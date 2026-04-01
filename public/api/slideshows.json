@@ -1,6 +1,90 @@
 {
   "slideshows": [
     {
+      "id": "v3_20260326_024506_14",
+      "created_at": "2026-04-01T00:32:01.735Z",
+      "hook": "Stop studying for hours Start studying in bursts",
+      "downloaded": false,
+      "slides": [
+        {
+          "index": 0,
+          "headline": "Stop studying for hours Start studying in bursts",
+          "subline": "",
+          "composite_image": "/slideshows/v3_20260326_024506_14-slide-0.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_14-slide-0.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 1,
+          "headline": "The science:",
+          "subline": "",
+          "composite_image": "/slideshows/v3_20260326_024506_14-slide-1.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_14-slide-1.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 2,
+          "headline": "25-min focus",
+          "subline": "5-min breaks\nDeep work blocks",
+          "composite_image": "/slideshows/v3_20260326_024506_14-slide-2.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_14-slide-2.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 3,
+          "headline": "App I use:",
+          "subline": "Built-in focus timer & break reminders",
+          "composite_image": "/slideshows/v3_20260326_024506_14-slide-3.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_14-slide-3.jpg",
+          "hasRaw": true
+        }
+      ],
+      "full_preview": "/slideshows/v3_20260326_024506_14-slide-0.jpg",
+      "has_raw_backgrounds": true
+    },
+    {
+      "id": "v3_20260326_024506_15",
+      "created_at": "2026-04-01T00:32:01.721Z",
+      "hook": "When you realize most study advice is actually wrong",
+      "downloaded": false,
+      "slides": [
+        {
+          "index": 0,
+          "headline": "When you realize most study advice is actually wrong",
+          "subline": "",
+          "composite_image": "/slideshows/v3_20260326_024506_15-slide-0.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_15-slide-0.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 1,
+          "headline": "What works:",
+          "subline": "",
+          "composite_image": "/slideshows/v3_20260326_024506_15-slide-1.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_15-slide-1.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 2,
+          "headline": "Testing yourself",
+          "subline": "Spacing it out\nExplaining to others",
+          "composite_image": "/slideshows/v3_20260326_024506_15-slide-2.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_15-slide-2.jpg",
+          "hasRaw": true
+        },
+        {
+          "index": 3,
+          "headline": "App I use:",
+          "subline": "Study methods that actually work, backed by science",
+          "composite_image": "/slideshows/v3_20260326_024506_15-slide-3.jpg",
+          "raw_image": "/raw-images/v3_20260326_024506_15-slide-3.jpg",
+          "hasRaw": true
+        }
+      ],
+      "full_preview": "/slideshows/v3_20260326_024506_15-slide-0.jpg",
+      "has_raw_backgrounds": true
+    },
+    {
       "id": "v1_20260319_023532_01",
       "created_at": "2026-03-31T14:06:15.543Z",
       "hook": "Study smarter until you're the smartest in the room 🧠📚",
